@@ -19,19 +19,19 @@
 # Modify hostname
 #sed -i 's/OpenWrt/P3TERX-Router/g' package/base-files/files/bin/config_generate
 
-set -euo pipefail
+# set -euo pipefail
 
-PATCH_DIR="$GITHUB_WORKSPACE/patches"
+# PATCH_DIR="$GITHUB_WORKSPACE/patches"
 
-if compgen -G "$PATCH_DIR/*.patch" > /dev/null; then
-  for p in "$PATCH_DIR"/*.patch; do
-    echo ">>> 应用补丁: $(basename "$p")"
-    if ! git apply --check "$p"; then
-      echo "::error::补丁 $(basename "$p") 与当前上游源码冲突,需要重新生成"
-      exit 1
-    fi
-    git apply "$p"
-  done
-fi
+# if compgen -G "$PATCH_DIR/*.patch" > /dev/null; then
+#   for p in "$PATCH_DIR"/*.patch; do
+#     echo ">>> 应用补丁: $(basename "$p")"
+#     if ! git apply --check "$p"; then
+#       echo "::error::补丁 $(basename "$p") 与当前上游源码冲突,需要重新生成"
+#       exit 1
+#     fi
+#     git apply "$p"
+#   done
+# fi
 
-git status --short   # 日志里确认哪些文件被改了
+# git status --short   # 日志里确认哪些文件被改了
