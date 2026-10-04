@@ -94,7 +94,12 @@ default_packages=(
     "uclient-fetch",
     "urandom-seed",
     "urngd",
-    "wpad-openssl"
+    "wpad-openssl",
+    "kmod-mt7915e",
+    "kmod-mt7986-firmware",
+    "mt7986-wo-firmware",
+    "kmod-usb3",
+    "automount"
 )
 # 循环调用 config_package_add 函数
 for package in "${default_packages[@]}"; do
