@@ -108,12 +108,70 @@ done
 
 ################################################################
 
+# 修改主机名
+sed -i 's/ImmortalWrt/N60-Pro/g' package/base-files/files/bin/config_generate
 # 设置'root'密码为 'password'
 sed -i 's/root:::0:99999:7:::/root:$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF.::0:99999:7:::/g' package/base-files/files/etc/shadow
 # 修改默认IP
 sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_generate
 # 添加编译时间到 /etc/banner
 sed -i '$ i\\ Build Time: '"$(date +%Y%m%d)"'' package/base-files/files/etc/banner
+
+# 允许从 WAN 口访问本机 1080 端口
+cat >> package/network/config/firewall/files/firewall.config <<EOF
+config rule
+        option name 'Allow-WAN-1080'
+        option src 'wan'
+        option dest_port '1080'
+        option proto 'tcp udp'
+        option target 'ACCEPT'
+EOF
+
+# ===== LED 配置完全对齐参照固件（section名/显示名/mode 全部一致）=====
+python3 - <<'PYEOF'
+import pathlib
+
+led_file = pathlib.Path("target/linux/mediatek/filogic/base-files/etc/board.d/01_leds")
+text = led_file.read_text()
+
+old = '''netcore,n60-pro)
+	ucidef_set_led_netdev "lan1" "LAN1" "mdio-bus:05:green:lan" "lan1" "link tx rx"
+	ucidef_set_led_netdev "wanact" "WANACT" "mdio-bus:06:green:wan" "eth1" "tx rx"
+	ucidef_set_led_netdev "wanlink" "WANLINK" "blue:wan" "eth1" "link"
+	;;'''
+
+new = '''netcore,n60-pro)
+    # 绑定 2.5G LAN1 网口灯 (对应 DTS 中 phy5 的绿灯)
+	# 当 lan1 接口建立连接(link)及收发数据(tx rx)时闪烁
+	ucidef_set_led_netdev "lan1" "LAN1" "mdio-bus:05:green:lan" "lan1" "link tx rx"
+
+	# 绑定 2.5G WAN 网口的数据状态灯 (对应 DTS 中 phy6 的绿灯)
+	# 仅在 eth1 (WAN口) 收发流量时闪烁
+	ucidef_set_led_netdev "wanact" "WANACT" "mdio-bus:06:green:wan" "eth1" "tx rx"
+
+	# 绑定面板上的 WAN 状态指示灯 (对应 DTS 中 gpio-leds 的 led-4 "blue:wan")
+	# 只要插上 WAN 口网线，面板蓝灯常亮
+	ucidef_set_led_netdev "wanlink" "WANLINK" "blue:wan" "eth1" "link"
+
+	# 绑定面板上的 Wi-Fi 状态指示灯 (对应 DTS 中 gpio-leds 的 led-0 "blue:wlan")
+	# 绑定到联发科主无线接口 rax0
+	ucidef_set_led_netdev "wlan" "WLAN" "blue:wlan" "rax0" "link"
+
+	# 绑定面板上的 USB 状态指示灯 (对应 DTS 中 gpio-leds 的 led-2 "blue:usb")
+	# 监听物理总线 usb2-port1 (通常对应 USB 3.0 接口)
+	ucidef_set_led_usbport "usb" "USB" "blue:usb" "usb2-port1"
+	
+	# (可选) 绑定 WPS 指示灯 (对应 DTS 中 led-3 "blue:wps")
+	# 通常不在默认配置中启用，但你可以手动指定为某个状态，例如常亮，或者不写
+	# ucidef_set_led_default "wps" "WPS" "blue:wps" "0"
+	;;'''
+
+assert old in text, "01_leds 脚本内容跟预期不一致，可能源码已更新，请检查后再编译！"
+text = text.replace(old, new)
+
+led_file.write_text(text)
+print("[OK] LED配置已完全对齐参照固件（section名、显示名、mode全部一致）")
+PYEOF
 
 #### 删除
 # Sound Support
