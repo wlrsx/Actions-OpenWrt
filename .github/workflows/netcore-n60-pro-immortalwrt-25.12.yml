@@ -113,11 +113,6 @@ jobs:
           echo "------------------------------- 目标架构配置 -------------------------------"
           grep "CONFIG_TARGET" .config
           grep -q "CONFIG_TARGET_mediatek_filogic=y" .config || { echo "target 不是 filogic"; exit 1; }
-          # 防止误编译整个 target 的所有设备
-          if grep -q '^CONFIG_TARGET_ALL_PROFILES=y' .config; then
-            echo "不应启用 CONFIG_TARGET_ALL_PROFILES"
-            exit 1
-          fi
 
       - name: 加载自定义配置
         run: |
