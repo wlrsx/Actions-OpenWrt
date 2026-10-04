@@ -115,20 +115,6 @@ sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_genera
 # 添加编译时间到 /etc/banner
 sed -i '$ i\\ Build Time: '"$(date +%Y%m%d)"'' package/base-files/files/etc/banner
 
-#### 镜像生成
-# 修改分区大小
-sed -i "/CONFIG_TARGET_KERNEL_PARTSIZE/d" .config
-echo "CONFIG_TARGET_KERNEL_PARTSIZE=32" >> .config
-sed -i "/CONFIG_TARGET_ROOTFS_PARTSIZE/d" .config
-echo "CONFIG_TARGET_ROOTFS_PARTSIZE=2048" >> .config
-# 调整 GRUB_TIMEOUT
-sed -i "s/CONFIG_GRUB_TIMEOUT=\"3\"/CONFIG_GRUB_TIMEOUT=\"1\"/" .config
-## 不生成 EXT4 硬盘格式镜像
-config_del TARGET_ROOTFS_EXT4FS
-config_del TARGET_ROOTFS_TARGZ
-## 不生成非 EFI 镜像
-config_del GRUB_IMAGES
-
 #### 删除
 # Sound Support
 config_package_del kmod-sound-core

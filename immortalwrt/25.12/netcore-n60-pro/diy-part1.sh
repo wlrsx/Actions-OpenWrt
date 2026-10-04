@@ -10,10 +10,21 @@
 # See /LICENSE for more information.
 #
 
-# 使用 O2 级别的优化
-sed -i 's,Os,O2 -march=x86-64-v2,g' include/target.mk
+# ================= 替换 Netcore N60 Pro 自定义 DTS 分区表 =================
+MY_DTS="${GITHUB_WORKSPACE}/dts/mt7986a-netcore-n60-pro/400mb+100mb.dts"
+TARGET_DTS=$(find target/linux/mediatek -name "mt7986a-netcore-n60-pro.dts" -print -quit)
 
-# 关闭 Spectre & Meltdown 补丁
-sed -i 's,noinitrd,noinitrd mitigations=off,g' target/linux/x86/image/grub-efi.cfg
-sed -i 's,noinitrd,noinitrd mitigations=off,g' target/linux/x86/image/grub-iso.cfg
-sed -i 's,noinitrd,noinitrd mitigations=off,g' target/linux/x86/image/grub-pc.cfg
+if [ -f "$MY_DTS" ]; then
+    if [ -n "$TARGET_DTS" ]; then
+        echo "✅ 找到目标 DTS 文件: $TARGET_DTS"
+        # 强制覆盖 (-f)
+        cp -f "$MY_DTS" "$TARGET_DTS"
+        echo "🚀 成功将 400mb+100mb.dts 覆盖至系统源码！"
+    else
+        echo "❌ 错误: 在源码 target/linux/mediatek/ 下未找到 N60 Pro 的 DTS 文件！"
+        exit 1
+    fi
+else
+    echo "❌ 错误: 你的 GitHub 仓库里没有找到 $MY_DTS 文件，请检查路径和大小写！"
+    exit 1
+fi
