@@ -1,0 +1,222 @@
+name: immortalwrt25.12 Netcore N60 Pro Builder
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [immortalwrt_25.12-update]
+
+env:
+  REPO_URL: https://github.com/immortalwrt/immortalwrt
+  REPO_NAME: immortalwrt
+  REPO_BRANCH: openwrt-25.12
+  OpenWrt_VERSION: 25.12
+  OpenWrt_ARCH: netcore-n60-pro
+  FEEDS_CONF: feeds.conf.default
+  CONFIG_FILE: config/netcore-n60-pro/immortalwrt-25.12.config
+  DIY_P1_SH: immortalwrt/25.12/netcore-n60-pro/diy-part1.sh
+  DIY_P2_SH: immortalwrt/25.12/netcore-n60-pro/diy-part2.sh
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检查服务器配置
+        run: |
+          echo "警告⚠"
+          echo "若分配的服务器性能不足，务必及时取消，重新运行！"
+          echo "已知编译成功CPU型号：8370C,8573C,8171M"
+          echo "已知性能不足CPU型号：8272CL,E5系列"
+          echo "--------------------------CPU信息--------------------------"
+          echo "CPU物理数量:$(cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l)"
+          echo -e "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+          echo "--------------------------内存信息--------------------------"
+          echo "已安装内存详细信息："
+          sudo lshw -short -C memory | grep GiB
+          echo -e "\n"
+          echo "--------------------------硬盘信息--------------------------"
+          echo -e  "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l) \n"
+          echo "硬盘详情："
+          df -Th
+
+      - name: 清理磁盘空间 (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: 检查磁盘检使用情况
+        if: (!cancelled())
+        run: df -hT
+
+      - name: 准备完成
+        uses: actions/checkout@main
+
+      - name: 初始化编译环境
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo -E apt-get -qq update
+          sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+          # 停止可能冲突的服务
+          sudo systemctl stop fwupd || true
+          sudo systemctl disable fwupd || true
+          # 清理不需要的包，添加 -y 自动确认
+          sudo -E apt-get -qq -y autoremove --purge
+          sudo -E apt-get -qq clean
+          sudo timedatectl set-timezone "${TZ}"
+          sudo mkdir -p /workdir
+          sudo chown $USER:$GROUPS /workdir
+
+      - name: 下载固件源码
+        working-directory: /workdir
+        run: |
+          df -hT $PWD
+          git clone -b ${REPO_BRANCH} --single-branch --depth 1 ${REPO_URL} openwrt
+          ln -sf /workdir/openwrt ${GITHUB_WORKSPACE}/openwrt
+
+      - name: 加载自定义feeds
+        run: |
+          [ -e ${FEEDS_CONF} ] && mv ${FEEDS_CONF} openwrt/feeds.conf.default
+          chmod +x ${DIY_P1_SH}
+          cd openwrt
+          ${GITHUB_WORKSPACE}/${DIY_P1_SH}
+
+      - name: 更新并安装feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: 加载 config
+        run: |
+          cd openwrt
+
+          if [ -e "${GITHUB_WORKSPACE}/${CONFIG_FILE}" ]; then
+            echo "发现自定义配置文件: $CONFIG_FILE"
+            cp "${GITHUB_WORKSPACE}/${CONFIG_FILE}" .config
+          else
+            echo "未找到配置文件: $CONFIG_FILE"
+            exit 1
+          fi
+
+          make defconfig
+
+          echo "------------------------------- 目标架构配置 -------------------------------"
+          grep "CONFIG_TARGET" .config
+          grep -q "CONFIG_TARGET_mediatek_filogic=y" .config || { echo "target 不是 filogic"; exit 1; }
+          # 防止误编译整个 target 的所有设备
+          if grep -q '^CONFIG_TARGET_ALL_PROFILES=y' .config; then
+            echo "不应启用 CONFIG_TARGET_ALL_PROFILES"
+            exit 1
+          fi
+
+      - name: 加载自定义配置
+        run: |
+          chmod +x ${DIY_P2_SH}
+          cd openwrt
+          ${GITHUB_WORKSPACE}/${DIY_P2_SH}
+
+      - name: 下载软件包
+        id: package
+        run: |
+          cd openwrt
+          make defconfig
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: 编译固件
+        id: compile
+        run: |
+          cd openwrt
+          echo -e "$(($(nproc) + 1)) thread compile"
+          make -j$(($(nproc) + 1)) V=s || make -j1 || make -j1 V=s
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "COMPILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+      - name: 检查磁盘使用情况
+        if: (!cancelled())
+        run: df -hT
+
+      - name: 列出固件文件
+        if: steps.compile.outputs.status == 'success' && !cancelled()
+        run: |
+          cd openwrt/bin/targets/*/*
+          echo -e "------------------------------- 文件列表 -------------------------------"
+          ls
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+
+      - name: 整理固件
+        if: steps.compile.outputs.status == 'success' && !cancelled()
+        run: |
+          cp -rf openwrt/.config ${{ env.FIRMWARE }}/config
+          cd ${{ env.FIRMWARE }}
+          rm -rf packages
+          rm -rf profiles.json
+          rm -rf *.buildinfo
+          rm -rf *.manifest
+          rm -rf *kernel.bin
+          rm -rf *squashfs-rootfs.img.gz
+          rm -rf *targz-rootfs.tar.gz
+
+          # 给固件加上版本和日期；如有 .itb/.fip/.bl2 等产物，按实际日志补充后缀
+          for f in *sysupgrade.bin *factory.bin; do
+            [ -e "$f" ] || continue
+            mv "$f" "${f%.bin}-${OpenWrt_VERSION}-${COMPILE_DATE}.bin"
+          done
+          # 改名后重新生成校验文件
+          rm -f sha256sums
+          sha256sum -- * > sha256sums
+          echo -e "------------------------------- 文件列表 -------------------------------"
+          ls
+
+      - name: 生成发布标签
+        id: tag
+        if: steps.compile.outputs.status == 'success' && !cancelled()
+        run: |
+          echo "release_tag=${{ env.REPO_NAME }}_${{ env.OpenWrt_VERSION }}_${{ env.OpenWrt_ARCH }}_${{ env.COMPILE_DATE }}" >> ${GITHUB_OUTPUT}
+          # 发布说明里的 IP / 密码请与 diy-part2.sh 实际设置保持一致
+          cat > ${{ env.REPO_NAME }}-${{ env.OpenWrt_ARCH }}-release.txt <<'EOF'
+          💻 设备: ${{ env.OpenWrt_ARCH }}
+ 
+          📂 源码: ${{ env.REPO_URL }}
+ 
+          🌳 分支: ${{ env.REPO_BRANCH }}
+ 
+          ⏱️ 编译时间: ${{ env.COMPILE_DATE }}
+ 
+          🌐 管理地址: 192.168.10.1 , 子网掩码: 255.255.255.0
+ 
+          👤 用户名: root
+ 
+          🔒 密码: password
+          EOF
+
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: 发布固件到 Releases
+        uses: softprops/action-gh-release@v2
+        if: steps.tag.outputs.status == 'success' && !cancelled()
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          body_path: ${{ env.REPO_NAME }}-${{ env.OpenWrt_ARCH }}-release.txt
+          files: ${{ env.FIRMWARE }}/*
+
+      - name: 删除 Releases 旧版本
+        uses: dev-drprasad/delete-older-releases@master
+        if: steps.tag.outputs.status == 'success' && !cancelled()
+        with:
+          keep_latest: 2
+          delete_tags: true
+          delete_tag_pattern: ^${{ env.REPO_NAME }}_${{ env.OpenWrt_VERSION }}_${{ env.OpenWrt_ARCH }}_.*$
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
