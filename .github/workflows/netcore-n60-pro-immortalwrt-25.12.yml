@@ -85,7 +85,12 @@ jobs:
 
       - name: 加载自定义feeds
         run: |
-          [ -e ${FEEDS_CONF} ] && mv ${FEEDS_CONF} openwrt/feeds.conf.default || true
+          if [ -e "${FEEDS_CONF}" ]; then
+            echo "✅ 发现自定义 feeds: ${FEEDS_CONF}，正在替换..."
+            mv "${FEEDS_CONF}" openwrt/feeds.conf.default
+          else
+            echo "ℹ️ 未提供自定义 feeds，将使用官方默认源。"
+          fi
 
       - name: 加载自定义配置 1
         run: |
