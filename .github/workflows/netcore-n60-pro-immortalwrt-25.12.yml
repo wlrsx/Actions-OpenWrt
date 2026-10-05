@@ -213,7 +213,7 @@ jobs:
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: 发布固件到 Releases
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: steps.tag.outputs.status == 'success' && !cancelled()
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
@@ -221,11 +221,9 @@ jobs:
           files: ${{ env.FIRMWARE }}/*
 
       - name: 删除 Releases 旧版本
-        uses: dev-drprasad/delete-older-releases@master
-        if: steps.tag.outputs.status == 'success' && !cancelled()
+        uses: jluo1996/delete-releases-action@v1
         with:
-          keep_latest: 2
-          delete_tags: true
-          delete_tag_pattern: ^${{ env.REPO_NAME }}_${{ env.OpenWrt_VERSION }}_${{ env.OpenWrt_ARCH }}_.*$
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag-pattern: '^${{ env.REPO_NAME }}_${{ env.OpenWrt_VERSION }}_${{ env.OpenWrt_ARCH }}_.*$'
+          keep-latest: '3'
+          remove-tags: 'true'
+          token: ${{ secrets.GITHUB_TOKEN }}
