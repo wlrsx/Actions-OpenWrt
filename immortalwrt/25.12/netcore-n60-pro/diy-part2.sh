@@ -113,7 +113,7 @@ sed -i 's/ImmortalWrt/N60-Pro/g' package/base-files/files/bin/config_generate
 # 设置'root'密码为 'password'
 sed -i 's/root:::0:99999:7:::/root:$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF.::0:99999:7:::/g' package/base-files/files/etc/shadow
 # 修改默认IP
-sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_generate
+sed -i 's/192.168.1.1/192.168.60.1/g' package/base-files/files/bin/config_generate
 # 添加编译时间到 /etc/banner
 sed -i '$ i\\ Build Time: '"$(date +%Y%m%d)"'' package/base-files/files/etc/banner
 
