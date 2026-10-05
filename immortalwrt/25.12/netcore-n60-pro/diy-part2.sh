@@ -144,8 +144,8 @@ new = '''netcore,n60-pro)
 	ucidef_set_led_netdev "wanlink" "WANLINK" "mdio-bus:06:green:wan" "eth1" "link_10 link_100 link_1000 link_2500 tx rx"
 	ucidef_set_led_netdev "lan_1" "LAN-1" "mdio-bus:05:green:lan" "lan1" "link_10 link_100 link_1000 link_2500 tx rx"
 	ucidef_set_led_netdev "wan" "WAN" "blue:wan" "eth1" "link"
-	ucidef_set_led_netdev "WIFI" "WIFI" "blue:wlan" "rax0" "link"
-	ucidef_set_led_usbport "USB" "USB" "blue:usb" "usbport" "usb1-port2"
+	ucidef_set_led_netdev "WIFI" "WIFI" "blue:wlan" "phy1-ap0" "link"
+	ucidef_set_led_usbport "USB" "USB" "blue:usb" "usbport" "usb1-port2" "usb2-port1"
 	ucidef_set_led_netdev "lan" "LAN" "blue:wps" "br-lan" "link_10 link_100 link_1000 link_2500 tx rx"
 	;;'''
 
