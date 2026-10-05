@@ -210,7 +210,7 @@ config_package_add unzip
 # upnp
 config_package_add luci-app-upnp
 # autoreboot
-#config_package_add luci-app-autoreboot
+config_package_add luci-app-autoreboot
 # tty 终端
 config_package_add luci-app-ttyd
 # tty 免登录
