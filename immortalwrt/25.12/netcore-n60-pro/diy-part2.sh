@@ -252,6 +252,7 @@ config_package_add luci-app-argon-config
 #config_package_add luci-app-partexp
 # 文件管理
 config_package_add luci-app-fileassistant
+
 # 设置向导
 #config_package_add luci-app-netwizard
 # smartdns
@@ -269,3 +270,5 @@ config_package_add luci-app-fileassistant
 # 内网穿透
 #config_package_add luci-app-easytier
 #config_package_add easytier
+
+config_package_add tcping
