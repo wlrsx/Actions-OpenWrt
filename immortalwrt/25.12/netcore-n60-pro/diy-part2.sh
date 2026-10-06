@@ -117,15 +117,22 @@ sed -i 's/192.168.1.1/192.168.60.1/g' package/base-files/files/bin/config_genera
 # 添加编译时间到 /etc/banner
 sed -i '$ i\\ Build Time: '"$(date +%Y%m%d)"'' package/base-files/files/etc/banner
 
-# 允许从 WAN 口访问本机 1080 端口
-cat >> package/network/config/firewall/files/firewall.config <<EOF
-config rule
-        option name 'Allow-WAN-1080'
-        option src 'wan'
-        option dest_port '1080'
-        list proto 'tcp'
-        list proto 'udp'
-        option target 'ACCEPT'
+# ==========================================
+# 允许从 WAN 口访问本机 1080 端口 (uci-defaults注入法)
+# ==========================================
+mkdir -p files/etc/uci-defaults
+cat > files/etc/uci-defaults/99-custom-firewall << "EOF"
+#!/bin/sh
+uci -q get firewall.allow_1080 >/dev/null && exit 0
+
+uci set firewall.allow_1080=rule
+uci set firewall.allow_1080.name='Allow-WAN-1080'
+uci set firewall.allow_1080.src='wan'
+uci set firewall.allow_1080.dest_port='1080'
+uci set firewall.allow_1080.proto='tcp udp'
+uci set firewall.allow_1080.target='ACCEPT'
+uci commit firewall
+exit 0
 EOF
 
 # ===== LED 配置完全对齐参照固件（section名/显示名/mode 全部一致）=====
