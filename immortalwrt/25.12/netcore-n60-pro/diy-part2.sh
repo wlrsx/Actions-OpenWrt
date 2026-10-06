@@ -123,7 +123,8 @@ config rule
         option name 'Allow-WAN-1080'
         option src 'wan'
         option dest_port '1080'
-        option proto 'tcp udp'
+        list proto 'tcp'
+        list proto 'udp'
         option target 'ACCEPT'
 EOF
 
@@ -272,3 +273,5 @@ config_package_add luci-app-fileassistant
 #config_package_add easytier
 
 config_package_add tcping
+
+config_package_add luci-app-nikki

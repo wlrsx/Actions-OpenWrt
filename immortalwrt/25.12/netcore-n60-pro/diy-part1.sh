@@ -10,6 +10,9 @@
 # See /LICENSE for more information.
 #
 
+# Add a feed source
+echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
+
 # ================= 替换 Netcore N60 Pro 自定义 DTS 分区表 =================
 MY_DTS="${GITHUB_WORKSPACE}/dts/mt7986a-netcore-n60-pro/400mb+100mb.dts"
 TARGET_DTS=$(find target/linux/mediatek -name "mt7986a-netcore-n60-pro.dts" -print -quit)
